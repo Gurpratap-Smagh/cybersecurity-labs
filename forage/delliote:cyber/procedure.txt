@@ -1,0 +1,13 @@
+I got the log file
+used linux shell grep function
+To identify a bot, no.1 sign is the amount of requests so i used the following command:
+grep "/api/factory/machine/status" web_activity.log | grep -o 'authorizedUserId: "[^"]*' | cut -d'"' -f2 | sort | uniq -c | sort -nr
+It turned out to provide the following top 3 suspects:
+a) 121 mdB7yD2dp1BFZPontHBQ1Z
+b) 19 obbi5BSPBt2K66ZGP8cyTJ
+c) 17 qNFGnHD22ck85MbYPkHA8U
+I added their id to the filter and found out, user with 'mdB7yD2dp1BFZPontHBQ1Z' id made normal requests, but after a certain point, it started making 1 req per hour, which shows a bot like behavior. 
+Further it was sending requests to the breached directory, confirming that its the infiltrator.
+
+I submitted and got the certification.
+
